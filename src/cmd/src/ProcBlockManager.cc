@@ -15,6 +15,7 @@
 #include <RAT/FitCentroidProc.hh>
 #include <RAT/FitPathProc.hh>
 #include <RAT/FitTensorProc.hh>
+#include <RAT/ForcedTriggerProc.hh>
 #include <RAT/LessSimpleDAQ2Proc.hh>
 #include <RAT/LessSimpleDAQProc.hh>
 #include <RAT/NoiseProc.hh>
@@ -27,7 +28,9 @@
 #include <RAT/SplitEVDAQProc.hh>
 #include <RAT/TrueDAQProc.hh>
 #include <RAT/WaveformAnalysis.hh>
+#include <RAT/WaveformAnalysisGaussian.hh>
 #include <RAT/WaveformAnalysisLognormal.hh>
+#include <RAT/WaveformAnalysisSinc.hh>
 #include <RAT/WaveformPrep.hh>
 
 namespace RAT {
@@ -88,12 +91,15 @@ ProcBlockManager::ProcBlockManager(ProcBlock *theMainBlock) {
   AppendProcessor<AfterPulseProc>();
   AppendProcessor<SimpleDAQProc>();
   AppendProcessor<SplitEVDAQProc>();
+  AppendProcessor<ForcedTriggerProc>();
   AppendProcessor<LessSimpleDAQProc>();
   AppendProcessor<LessSimpleDAQ2Proc>();
   AppendProcessor<TrueDAQProc>();
   AppendProcessor<WaveformAnalysis>();
   AppendProcessor<WaveformPrep>();
+  AppendProcessor<WaveformAnalysisGaussian>();
   AppendProcessor<WaveformAnalysisLognormal>();
+  AppendProcessor<WaveformAnalysisSinc>();
   // Misc
   AppendProcessor<CountProc>();
   AppendProcessor<PruneProc>();

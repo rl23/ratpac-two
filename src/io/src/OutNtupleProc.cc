@@ -67,7 +67,6 @@ OutNtupleProc::OutNtupleProc() : Processor("outntuple") {
 }
 
 bool OutNtupleProc::OpenFile(std::string filename) {
-  int i = 0;
   outputFile = TFile::Open(filename.c_str(), "RECREATE");
   // Meta Tree
   metaTree = new TTree("meta", "meta");
@@ -167,6 +166,7 @@ bool OutNtupleProc::OpenFile(std::string filename) {
     outputTree->Branch("mcPMTNPE", &mcpmtnpe);
     outputTree->Branch("mcPMTCharge", &mcpmtcharge);
 
+    outputTree->Branch("mcPEPMTID", &mcpepmtid);
     outputTree->Branch("mcPEHitTime", &mcpehittime);
     outputTree->Branch("mcPEFrontEndTime", &mcpefrontendtime);
     // Production process
@@ -191,6 +191,8 @@ bool OutNtupleProc::OpenFile(std::string filename) {
     outputTree->Branch("trackTime", &trackTime);
     outputTree->Branch("trackProcess", &trackProcess);
     metaTree->Branch("processCodeMap", &processCodeMap);
+    outputTree->Branch("trackVolume", &trackVolume);
+    metaTree->Branch("volumeCodeMap", &volumeCodeMap);
   }
   if (options.digitizerwaveforms) {
     waveformTree = new TTree("waveforms", "waveforms");
@@ -214,7 +216,6 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
   runBranch = DS::RunStore::GetRun(ds);
   DS::PMTInfo *pmtinfo = runBranch->GetPMTInfo();
   const DS::ChannelStatus *channel_status = runBranch->GetChannelStatus();
-  ULong64_t stonano = 1000000000;
   dsentries++;
   // Clear the previous vectors
   pdgcodes.clear();
@@ -268,11 +269,13 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
     trackKE.clear();
     trackTime.clear();
     trackProcess.clear();
+    trackVolume.clear();
 
     std::vector<double> xtrack, ytrack, ztrack;
     std::vector<double> pxtrack, pytrack, pztrack;
     std::vector<double> kinetic, globaltime;
     std::vector<int> processMapID;
+    std::vector<int> volumeMapID;
     for (int trk = 0; trk < nTracks; trk++) {
       DS::MCTrack *track = mc->GetMCTrack(trk);
       trackPDG.push_back(track->GetPDGCode());
@@ -285,6 +288,7 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
       kinetic.clear();
       globaltime.clear();
       processMapID.clear();
+      volumeMapID.clear();
       int nSteps = track->GetMCTrackStepCount();
       for (int stp = 0; stp < nSteps; stp++) {
         DS::MCTrackStep *step = track->GetMCTrackStep(stp);
@@ -295,6 +299,14 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
           processCodeIndex.push_back(processCodeMap.size() - 1);
           processName.push_back(proc);
         }
+        // Volume
+        std::string vol = step->GetVolume();
+        if (volumeCodeMap.find(vol) == volumeCodeMap.end()) {
+          volumeCodeMap[vol] = volumeCodeMap.size();
+          volumeCodeIndex.push_back(volumeCodeMap.size() - 1);
+          volumeName.push_back(vol);
+        }
+        volumeMapID.push_back(volumeCodeMap[vol]);
         processMapID.push_back(processCodeMap[proc]);
         TVector3 tv = step->GetEndpoint();
         TVector3 momentum = step->GetMomentum();
@@ -316,6 +328,7 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
       trackMomY.push_back(pytrack);
       trackMomZ.push_back(pztrack);
       trackProcess.push_back(processMapID);
+      trackVolume.push_back(volumeMapID);
     }
   }
 
@@ -333,6 +346,7 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
   mcpmtcharge.clear();
 
   // MCPE information
+  mcpepmtid.clear();
   mcpehittime.clear();
   mcpefrontendtime.clear();
   mcpeprocess.clear();
@@ -353,6 +367,7 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
       TVector3 position = pmtinfo->GetPosition(mcpmt->GetID());
       for (int ipe = 0; ipe < mcpmt->GetMCPhotonCount(); ipe++) {
         RAT::DS::MCPhoton *mcph = mcpmt->GetMCPhoton(ipe);
+        mcpepmtid.push_back(mcpmt->GetID());
         mcpehittime.push_back(mcph->GetHitTime());
         mcpefrontendtime.push_back(mcph->GetFrontEndTime());
         mcpewavelength.push_back(mcph->GetLambda());
